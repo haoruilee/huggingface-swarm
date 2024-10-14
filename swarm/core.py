@@ -1,4 +1,5 @@
 # Standard library imports
+import os
 import copy
 import json
 from collections import defaultdict
@@ -22,11 +23,14 @@ from .types import (
 
 __CTX_VARS_NAME__ = "context_variables"
 
+OPENAI_ENDPOINT = os.getenv('OPENAI_ENDPOINT', 'https://api.openai.com/v1')
+
 
 class Swarm:
     def __init__(self, client=None):
         if not client:
             client = OpenAI()
+            client.base_url = OPENAI_ENDPOINT
         self.client = client
 
     def get_chat_completion(
