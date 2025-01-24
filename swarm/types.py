@@ -11,7 +11,7 @@ from pydantic import BaseModel
 
 AgentFunction = Callable[[], Union[str, "Agent", dict]]
 
-SWARM_DEFAULT_MODEL = os.getenv('SWARM_DEFAULT_MODEL', 'qwen2.5:72b')
+SWARM_DEFAULT_MODEL = os.getenv('SWARM_DEFAULT_MODEL', 'Qwen/Qwen2.5-1.5B-Instruct')
 
 class Agent(BaseModel):
     name: str = "Agent"

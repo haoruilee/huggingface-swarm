@@ -1,7 +1,7 @@
-> Forked from https://github.com/openai/swarm with the following additional environment variables:
+# Huggingface Swarm
 
-```bash
-OPENAI_ENDPOINT=http://localhost:11434/v1 # using Ollama as example
-SWARM_DEFAULT_MODEL=qwen2.5:72b # using local Qwen2.5 72B as an example
-```
+Merge huggingface client to swarm to use huggingfacce's serverless api.
 
+IMPORTANT NOTE: NOT STABLE!
+
+Sometimes the function calling will hang or keep calling the same agent. Not ready for production.  

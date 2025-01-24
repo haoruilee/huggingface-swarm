@@ -4,7 +4,7 @@ import copy
 import json
 from collections import defaultdict
 from typing import List, Callable, Union
-
+from .huggingface import HuggingFaceClient
 # Package/library imports
 from openai import OpenAI
 
@@ -24,13 +24,23 @@ from .types import (
 __CTX_VARS_NAME__ = "context_variables"
 
 OPENAI_ENDPOINT = os.getenv('OPENAI_ENDPOINT', 'https://api.openai.com/v1')
+SWARM_CLIENT_BACKEND = os.getenv("SWARM_CLIENT_BACKEND", "openai")
+
 
 
 class Swarm:
     def __init__(self, client=None):
-        if not client:
-            client = OpenAI()
-            client.base_url = OPENAI_ENDPOINT
+        if not client:            
+            if SWARM_CLIENT_BACKEND.lower() == "huggingface":
+                # Instantiate huggingface
+                base_url = os.getenv("HF_API_ENDPOINT", "")
+                api_token = os.getenv("HF_API_TOKEN", "")
+                default_model = os.getenv("HF_DEFAULT_MODEL", "gpt2")
+                client = HuggingFaceClient()
+            else:
+                # Default to OpenAI
+                client = OpenAI()
+                client.base_url = OPENAI_ENDPOINT
         self.client = client
 
     def get_chat_completion(
@@ -50,6 +60,8 @@ class Swarm:
         )
         messages = [{"role": "system", "content": instructions}] + history
         debug_print(debug, "Getting chat completion for...:", messages)
+        
+
 
         tools = [function_to_json(f) for f in agent.functions]
         # hide context_variables from model
@@ -59,9 +71,21 @@ class Swarm:
             if __CTX_VARS_NAME__ in params["required"]:
                 params["required"].remove(__CTX_VARS_NAME__)
 
+        # 2) Sanitize messages so Hugging Face doesn't reject them
+        sanitized = []
+        for msg in messages:
+           cleaned = {
+               "role": msg.get("role", "assistant"),
+               # If content is None, convert to empty string
+               "content": msg.get("content") if msg.get("content") else ""
+           }
+           # HF only allows role, content, optionally name for function messages
+           # So we skip 'tool_calls', 'sender', etc.
+           sanitized.append(cleaned)
+
         create_params = {
             "model": model_override or agent.model,
-            "messages": messages,
+            "messages": sanitized,
             "tools": tools or None,
             "tool_choice": agent.tool_choice,
             "stream": stream,
@@ -115,7 +139,14 @@ class Swarm:
                     }
                 )
                 continue
-            args = json.loads(tool_call.function.arguments)
+
+            # If arguments is already a dict, no need to parse
+            if isinstance(tool_call.function.arguments, dict):
+                args = tool_call.function.arguments
+            else:
+                # Otherwise assume it's a JSON string
+                args = json.loads(tool_call.function.arguments)
+            
             debug_print(
                 debug, f"Processing tool call: {name} with arguments {args}")
 
